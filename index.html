@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>講演・研修の告知画像プロンプトビルダー</title>
+<meta name="description" content="選ぶだけで、講演会・研修・セミナーの告知画像を描く画像生成AI用プロンプトが組み上がる。会場の場面・画風・登壇者の仕草・装い・配色・小物と、タイトル・日時・会場などの文字を指定できるプロンプトビルダーです。">
+<!-- 公開URLが決まったら、og:url / og:image / twitter:image のドメインを実際のものに合わせる -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://lecture-prompt-builder.netlify.app/">
+<meta property="og:title" content="講演・研修の告知画像プロンプトビルダー">
+<meta property="og:description" content="選ぶだけで、講演会・研修・セミナーの告知画像を描く画像生成AI用プロンプトが組み上がる。会場・画風・登壇者・装い・配色と、告知の文字を指定できます。">
+<meta property="og:image" content="https://lecture-prompt-builder.netlify.app/ogp.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://lecture-prompt-builder.netlify.app/ogp.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400&display=swap">
+<style>
+/* Layout: 左に引き出し（カード）を縦に積み、右にプロンプト欄を固定。季節を選ぶと差し色が変わる */
+:root{
+  --bg:#f6f7f8; --surface:#ffffff; --line:#e1e4e8; --ink:#2c3036; --muted:#6d7480;
+  --accent:#2c5677; --accent-soft:#e6eef4; --accent-ink:#ffffff;
+  --display:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+:root[data-season="spring"]{--accent:#b4536a;--accent-soft:#f6e6ea}
+:root[data-season="summer"]{--accent:#2f6f8a;--accent-soft:#e1eef3}
+:root[data-season="autumn"]{--accent:#b05a2a;--accent-soft:#f6e9df}
+:root[data-season="winter"]{--accent:#3d6b6a;--accent-soft:#e2eeed}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1a1c1f;--surface:#24272b;--line:#363a40;--ink:#e9ecef;--muted:#a1a8b1;--accent-ink:#1a1c1f;--accent:#9cc0dc;--accent-soft:#273440;color-scheme:dark}
+  :root:not([data-theme="light"])[data-season="spring"]{--accent:#e59aab;--accent-soft:#3a2a30}
+  :root:not([data-theme="light"])[data-season="summer"]{--accent:#8cc6dc;--accent-soft:#233540}
+  :root:not([data-theme="light"])[data-season="autumn"]{--accent:#e39a6c;--accent-soft:#3a2c24}
+  :root:not([data-theme="light"])[data-season="winter"]{--accent:#8cc3c0;--accent-soft:#23332f}
+}
+:root[data-theme="dark"]{--bg:#1a1c1f;--surface:#24272b;--line:#363a40;--ink:#e9ecef;--muted:#a1a8b1;--accent-ink:#1a1c1f;--accent:#9cc0dc;--accent-soft:#273440;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));transition:background .3s}
+.wrap{max-width:1180px;margin:0 auto;padding-block:40px 80px}
+header .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--accent)}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(26px,4.5vw,40px);line-height:1.3;margin:.3em 0 .5em;color:var(--accent);text-wrap:balance}
+.lead{max-width:640px;color:var(--muted);font-size:14px;margin:0}
+.divider{height:1px;background:var(--line);margin:28px 0;position:relative}
+.divider::after{content:"";position:absolute;left:50%;top:-5px;width:9px;height:9px;background:var(--accent);transform:translateX(-50%) rotate(45deg)}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;align-items:start}
+@media (max-width:860px){.layout{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 22px 24px;min-width:0}
+.card h2{font-family:var(--display);font-size:19px;font-weight:700;margin:0;display:flex;align-items:baseline;gap:10px}
+.card h2 .num{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:400}
+.card .sub{color:var(--muted);font-size:13px;margin:6px 0 0}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.btn-ghost{font:inherit;font-size:12px;background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:5px 12px;cursor:pointer}
+.btn-ghost:hover{color:var(--accent);border-color:var(--accent)}
+.group-label{font-size:12px;color:var(--accent);font-weight:700;margin:16px 0 8px;letter-spacing:.06em}
+.group-label:first-of-type{margin-top:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.opt{display:block;text-align:left;font:inherit;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;transition:border-color .15s,background .15s}
+.opt:hover{border-color:var(--accent)}
+.opt .jp{font-weight:700;font-size:13.5px;line-height:1.5;display:block}
+.opt .en{font-family:var(--mono);font-size:10.5px;color:var(--muted);line-height:1.45;display:block;margin-top:4px}
+.opt[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.work-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.work-grid .jp{font-family:var(--display);font-size:16px}
+.work-grid .en{font-family:var(--body);font-size:11.5px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:inherit;font-size:13px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:6px 14px;cursor:pointer;text-align:left}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.season-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.season-bar .chip{font-family:var(--display);font-size:16px;padding:6px 20px}
+.line-chip{font-family:var(--display);border-radius:10px}
+.line-chip small{color:var(--muted);font-family:var(--body);font-size:11px;margin-right:6px}
+.line-chip[aria-pressed="true"] small{color:inherit}
+.toggle-row{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+.switch{flex:none;width:44px;height:24px;border-radius:999px;border:none;background:var(--line);position:relative;cursor:pointer}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--muted);transition:transform .2s,background .2s}
+.switch[aria-checked="true"]{background:var(--accent)}
+.switch[aria-checked="true"]::after{transform:translateX(20px);background:var(--accent-ink)}
+.field{display:flex;flex-direction:column;gap:6px;margin-top:14px}
+.field label,.field .lbl{font-size:13px;font-weight:700}
+.field .hint{font-size:12px;color:var(--muted)}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 14px}
+.subhead{font-size:12px;color:var(--accent);font-weight:700;letter-spacing:.06em;margin:22px 0 0;padding-top:14px;border-top:1px solid var(--line)}
+input[type=text],textarea{font:inherit;font-size:14px;width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+input[type=text]:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.note{font-size:12px;color:var(--muted);background:var(--accent-soft);border-radius:8px;padding:8px 12px;margin-top:12px}
+.world{font-size:12.5px;color:var(--ink);border-left:3px solid var(--accent);padding:4px 0 4px 12px;margin-top:14px}
+.world .en{display:block;font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:4px;line-height:1.5}
+aside.out{position:sticky;top:max(16px,env(safe-area-inset-top,0px))}
+.out h2{justify-content:space-between}
+.count{font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:400}
+#promptOutput{min-height:260px;margin-top:12px;font-family:var(--mono);font-size:12px;line-height:1.6;background:var(--accent-soft);border-color:transparent;resize:vertical}
+.btn{font:inherit;font-weight:700;font-size:14px;border-radius:10px;padding:11px;cursor:pointer;width:100%}
+.btn-primary{background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent);margin-top:10px}
+.btn-secondary{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.foot{font-size:12px;color:var(--muted);margin-top:14px}
+.empty{font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="eyebrow">LECTURE &amp; WORKSHOP FLYER PROMPT BUILDER</div>
+  <h1>講演・研修の告知画像プロンプトビルダー</h1>
+  <p class="lead">催しの種類・会場の場面・画風・登壇者の仕草・装い・配色・小物 ── 講演会や研修の告知画像を、画像生成AIが描ける具体的な英語の描写に置き換えて組み上げます。催しの種類や季節を選ぶと、それに合う項目だけに絞り込めます。登壇者の写真のアレンジや、タイトル・日時・会場などの文字の指定もできます。</p>
+</header>
+<div class="divider"></div>
+
+<div class="layout">
+<div class="col" id="controls">
+
+  <section class="card">
+    <div><h2>催しの種類を選ぶ</h2><p class="sub">選んだ催しの会場や空気感を英語の描写でプロンプトに加え、各引き出しをその催しの項目に絞り込みます</p></div>
+    <div class="grid work-grid" id="eventBar" style="margin-top:14px"></div>
+    <div id="worldBox"></div>
+    <div class="toggle-row" style="margin-top:16px">
+      <div><span class="lbl" style="font-size:13px;font-weight:700">告知画像らしいレイアウトにする</span><p class="sub" style="margin:2px 0 0">情報の強弱がはっきりした、文字が読みやすい告知ビジュアルとして仕上げる指示を入れます</p></div>
+      <button class="switch" id="flyerSwitch" role="switch" aria-checked="true" aria-label="告知画像らしいレイアウトにする"></button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head" style="border:none;margin:0;padding:0">
+      <div><h2>季節を選ぶ</h2><p class="sub">選んだ季節の項目だけを表示し、ランダムもその季節の中から選びます</p></div>
+    </div>
+    <div class="season-bar" id="seasonBar" style="margin-top:14px"></div>
+  </section>
+
+  <section class="card">
+    <div class="toggle-row">
+      <div><h2>登壇者ポートレートのアレンジ</h2><p class="sub">アップロードする登壇者の写真から顔立ちの特徴だけを受け継ぎ、告知画像の人物として一から描き直す指示を追加します</p></div>
+      <button class="switch" id="portraitSwitch" role="switch" aria-checked="false" aria-label="登壇者ポートレートのアレンジ"></button>
+    </div>
+    <div id="portraitBody" hidden>
+      <div class="field"><span class="lbl">アレンジの強さ（1つ選択）</span><div class="chips" id="strengthGrid"></div><span class="hint">「控えめ」は写真の顔にかなり近く、「大胆に」は雰囲気を残してイラストの人物として描き直します</span></div>
+      <div class="field"><span class="lbl">アレンジの方向性（複数選択可）</span><div class="grid" id="arrangeGrid"></div></div>
+      <div class="field"><label for="portraitFeatures">残したい顔立ちの特徴（任意）</label>
+      <textarea id="portraitFeatures" rows="2" placeholder="例：丸みのある頬、前髪あり、柔らかい笑顔、眼鏡"></textarea></div>
+    </div>
+  </section>
+
+  <div id="catHost" class="col"></div>
+
+  <section class="card">
+    <h2>告知の文字</h2>
+    <p class="sub">タイトル・登壇者・日時などを、告知画像の文字として配置する指示を追加します。文字の指示はプロンプトの先頭に入ります</p>
+    <div class="field"><span class="lbl">文字の描かせ方（1つ選択）</span><div class="chips" id="textModeGrid"></div><span id="textModeHint" class="hint"></span></div>
+
+    <p class="subhead">タイトル</p>
+    <div class="field"><span class="lbl">タイトルの例から選ぶ（任意）</span><div class="chips" id="lineGrid"></div><span class="hint">選ぶとタイトルに入ります。あとから書き換えもできます</span></div>
+    <div class="field"><label for="titleText">タイトル（任意）</label><input type="text" id="titleText" placeholder="例：言葉で、子どもは変わる。"></div>
+    <div class="field"><label for="subText">サブタイトル・キャッチコピー（任意）</label><input type="text" id="subText" placeholder="例：明日の授業が楽しみになる90分"></div>
+    <div class="field"><span class="lbl">文字のスタイル（任意・1つ選択）</span><div class="chips" id="textStyleGrid"></div></div>
+    <div class="field"><span class="lbl">タイトルの位置（任意・1つ選択）</span><div class="chips" id="textPosGrid"></div><span class="hint">選ばない場合は「顔に重ならない空いた場所」に配置する指示が入ります</span></div>
+
+    <p class="subhead">登壇者</p>
+    <div class="pair">
+      <div class="field"><label for="speakerName">登壇者名（任意）</label><input type="text" id="speakerName" placeholder="例：黒瀬直美"></div>
+      <div class="field"><label for="speakerRole">肩書き（任意）</label><input type="text" id="speakerRole" placeholder="例：国語教師／「今日も明日も授業道」パーソナリティ"></div>
+    </div>
+
+    <p class="subhead">開催情報</p>
+    <div class="pair">
+      <div class="field"><label for="dateText">日時（任意）</label><input type="text" id="dateText" placeholder="例：2026年12月5日（土）14:00〜16:00"></div>
+      <div class="field"><label for="venueText">会場（任意）</label><input type="text" id="venueText" placeholder="例：〇〇市民会館 大ホール／Zoom"></div>
+      <div class="field"><label for="hostText">主催（任意）</label><input type="text" id="hostText" placeholder="例：主催 〇〇国語教育研究会"></div>
+      <div class="field"><label for="feeText">参加費（任意）</label><input type="text" id="feeText" placeholder="例：参加無料／一般1,000円"></div>
+    </div>
+    <div class="field"><label for="applyText">申込方法（任意）</label><input type="text" id="applyText" placeholder="例：QRコードからお申し込みください"></div>
+    <div class="field"><span class="lbl">開催情報をまとめる位置（任意・1つ選択）</span><div class="chips" id="infoPosGrid"></div><span class="hint">選ばない場合は「下部の帯」にまとめます</span></div>
+    <div class="toggle-row" style="margin-top:16px">
+      <div><span class="lbl" style="font-size:13px;font-weight:700">QRコードの場所を空ける</span><p class="sub" style="margin:2px 0 0">開催情報の近くに、あとからQRコードを貼るための白い四角を空けておく指示を入れます</p></div>
+      <button class="switch" id="qrSwitch" role="switch" aria-checked="false" aria-label="QRコードの場所を空ける"></button>
+    </div>
+    <p class="note">ChatGPT の画像生成は日本語の文字も描けますが、日時・数字・長い会場名などの細かい文字は崩れることがあります。必ず確認し、崩れたときは「タイトルだけ描かせる」に切り替えて、日時などはあとから Canva などで重ねるのが確実です。</p>
+  </section>
+
+  <section class="card">
+    <h2>基調色・特殊効果</h2>
+    <div class="field"><span class="lbl">基調色から選ぶ（任意・1つ選択）</span><div class="chips" id="baseColorGrid"></div></div>
+    <div class="field"><label for="baseColor">基調となる色（任意）</label><input type="text" id="baseColor" placeholder="例：ネイビーと白"></div>
+    <div class="field"><span class="lbl">効果から選ぶ（複数選択可）</span><div class="chips" id="effectsGrid"></div></div>
+    <div class="field"><label for="specialEffects">特殊効果・仕上げ（任意）</label><input type="text" id="specialEffects" placeholder="例：やわらかなスポットライト、紙の質感"></div>
+  </section>
+
+  <section class="card">
+    <h2>構図・出力サイズ</h2>
+    <p class="sub">構図の指示はプロンプトの先頭に入ります（前にある指示ほど強く効くため）</p>
+    <div class="toggle-row" style="margin-top:14px">
+      <div><span class="lbl" style="font-size:13px;font-weight:700">頭が切れないようにする</span><p class="sub" style="margin:2px 0 0">頭の上に余白をとり、顔を中央寄りに置く指示を入れます</p></div>
+      <button class="switch" id="headroomSwitch" role="switch" aria-checked="true" aria-label="頭が切れないようにする"></button>
+    </div>
+    <div class="field"><span class="lbl">画角（任意・1つ選択）</span><div class="chips" id="framingGrid"></div></div>
+    <div class="field"><span class="lbl">人物の配置（任意・1つ選択）</span><div class="chips" id="sideGrid"></div><span class="hint">片側に寄せると、反対側を文字のスペースとして空けます</span></div>
+    <div class="field"><span class="lbl">アスペクト比（任意・1つ選択）</span><div class="chips" id="sizeGrid"></div></div>
+    <div class="field"><label for="customSize">サイズの直接指定（任意）</label><input type="text" id="customSize" placeholder="例：1080x1350、縦長"></div>
+  </section>
+</div>
+
+<aside class="out card">
+  <h2>生成されたプロンプト <span class="count" id="charCount">0 chars</span></h2>
+  <textarea id="promptOutput" readonly aria-label="生成されたプロンプト" placeholder="引き出しから項目を選ぶと、ここにプロンプトが表示されます"></textarea>
+  <button class="btn btn-primary" id="copyBtn">コピー</button>
+  <div class="btn-row">
+    <button class="btn btn-secondary" id="randomAll">全部ランダム</button>
+    <button class="btn btn-secondary" id="resetBtn">リセット</button>
+  </div>
+  <p class="foot">プロンプトは英語で生成されます（告知の文字は日本語のまま入ります）。ChatGPT の画像生成に、登壇者の写真と一緒にそのまま貼り付けてください。</p>
+  <p class="foot">生成された画像の日時・会場などの文字は、公開前に必ず確認してください。</p>
+</aside>
+</div>
+</div>
+
+<script>
+(function(){
+const SEASONS=[["all","すべて"],["spring","春"],["summer","夏"],["autumn","秋"],["winter","冬"]];
+const SEASON_EN={spring:"spring",summer:"summer",autumn:"autumn",winter:"winter"};
+// 催しの種類：会場と空気感の英語描写（world）をプロンプトに加え、引き出しを絞り込む
+const EVENTS=[
+ {key:"kouen",title:"講演会",meta:"ホール・市民会館・PTA講演",
+  world:"The setting of this image: a public lecture. A bright, welcoming lecture hall or civic auditorium, a podium with a microphone, a large screen, and an audience listening intently. The mood is inspiring, trustworthy, warm, and full of anticipation.",
+  lines:["言葉で、子どもは変わる。","読む力は、生きる力。","教室に、ことばの灯を。"]},
+ {key:"kenshu",title:"研修・ワークショップ",meta:"教員研修・校内研修・企業研修",
+  world:"The setting of this image: a hands-on training workshop. A bright seminar room with group tables, sticky notes, whiteboards, and participants talking actively together. The mood is practical, energetic, collaborative, and encouraging.",
+  lines:["明日から使える授業づくり","対話が生まれる教室へ","ICT×国語 はじめの一歩"]},
+ {key:"online",title:"オンラインセミナー",meta:"Zoom・ウェビナー",
+  world:"The setting of this image: an online seminar or webinar. A clean, well-lit home studio or study with a laptop, a soft ring light, a microphone, and gentle bokeh in the background, with a sense of connecting with many people through the screen. The mood is modern, friendly, clear, and accessible.",
+  lines:["おうちで学べる国語の授業術","90分でわかる 読解指導のコツ"]},
+ {key:"jugyo",title:"公開授業・授業研究会",meta:"研究授業・授業づくり講座",
+  world:"The setting of this image: an open lesson or lesson-study meeting at a Japanese school. A sunny classroom with a blackboard, wooden desks, students raising their hands, and teachers observing from the back. The mood is lively, sincere, hopeful, and rooted in everyday teaching.",
+  lines:["子どもが動き出す授業","ことばを磨く国語科の授業"]},
+ {key:"talk",title:"トークイベント・公開収録",meta:"ポッドキャスト・対談",
+  world:"The setting of this image: a talk event or a live podcast recording. A cozy small stage or bookstore café with two chairs, studio microphones, warm spotlights, and an intimate audience. The mood is relaxed, conversational, warm, and a little special.",
+  lines:["今日も明日も授業道","授業の話を、もっと気軽に。"]},
+ {key:"bungaku",title:"文学講座・読書会",meta:"古典・近代文学の講座",
+  world:"The setting of this image: a literature lecture or book club. A quiet library or study lined with old books, a long reading table, warm lamplight, and people reading together. The mood is intellectual, calm, literary, and inviting.",
+  lines:["名作を、もう一度読む。","おとなの文学講座","いま読みたい近代文学"]}
+];
+const EVENT_BY={};EVENTS.forEach(e=>EVENT_BY[e.key]=e);
+// グループ：{label, event(催しキー or "all"), items:[日本語ラベル, 英語プロンプト, 季節]}
+const CATEGORIES=[
+{key:"scene",num:"01",title:"会場・場面",sub:"告知画像の舞台となる会場や場面を1つ以上選びます",groups:[
+ {event:"kouen",items:[
+  ["大ホールの演壇（スポットライト×スクリーン）","a large auditorium stage with a wooden podium, a microphone, a big projection screen, and a soft spotlight","all"],
+  ["満席の講演会場（客席の後ろから）","a civic hall lecture room filled with an attentive audience in rows of seats, seen from behind the audience toward the stage","all"],
+  ["学校の体育館での講演（PTA・保護者向け）","a Japanese school gymnasium set up for a lecture, with a stage, rows of folding chairs, and parents seated attentively","all"],
+  ["大学の階段教室","a tiered university lecture theater with wooden desks rising in rows and tall bright windows","all"],
+  ["花を飾った演台（開演前の静けさ）","an empty stage just before a lecture begins, a podium decorated with a fresh flower arrangement, warm lighting","all"]]},
+ {event:"kenshu",items:[
+  ["グループで話し合う研修室（付箋×模造紙）","a bright seminar room with small groups gathered around tables covered with colorful sticky notes and large sheets of poster paper","all"],
+  ["ホワイトボードの前で進行する","a training room with a large whiteboard showing simple abstract diagrams, participants facing it with interest","all"],
+  ["車座になって対話する","participants seated in a circle of chairs in a relaxed, open dialogue","all"],
+  ["校内研修の会議室","a Japanese school meeting room arranged for an in-school teacher training session, joined desks and teachers leaning in to talk","all"],
+  ["木の床のワークショップスペース（カフェ風）","a bright, wood-floored workshop space with large windows, plants, and a café-like atmosphere","all"]]},
+ {event:"online",items:[
+  ["書斎のホームスタジオ（ノートPC×リングライト）","a tidy home studio in a study, a laptop on the desk, a soft ring light, and a small microphone","all"],
+  ["画面に並ぶ参加者の小窓","a laptop screen showing a grid of small video windows with smiling participants, seen over the speaker's shoulder","all"],
+  ["配信ブース（マイク×ヘッドセット）","a compact streaming booth with a studio microphone, headphones, and soft acoustic panels","all"],
+  ["本棚を背にした配信","a home office with a softly blurred bookshelf in the background, warm and inviting","all"]]},
+ {event:"jugyo",items:[
+  ["手が挙がる明るい教室","a sunny Japanese classroom where many students eagerly raise their hands","all"],
+  ["黒板の前の授業風景（チョーク×教科書）","a lesson in front of a green blackboard, with chalk and textbooks on the teacher's desk","all"],
+  ["教室の後ろで参観する先生たち","teachers observing a lesson from the back of a classroom, holding clipboards","all"],
+  ["授業後の研究協議（付箋×話し合い）","teachers discussing a lesson after class around joined desks covered with sticky notes","all"],
+  ["放課後の静かな教室（夕日×机）","a quiet classroom after school, bathed in warm evening light","all"]]},
+ {event:"talk",items:[
+  ["小さなステージの対談（2脚の椅子×マイク）","two chairs facing each other on a small stage with studio microphones and a warm spotlight","all"],
+  ["書店カフェのトークイベント","a cozy bookstore café arranged for a talk event, shelves of books and an intimate audience","all"],
+  ["公開収録のスタジオ（オンエアランプ）","a podcast recording studio with large microphones, headphones, and a glowing red on-air lamp with no lettering","all"],
+  ["客席から見たライトアップされた舞台","a small stage seen from the audience, softly lit, with a relaxed atmosphere","all"]]},
+ {event:"bungaku",items:[
+  ["古い図書館の閲覧室","a classic library reading room with tall bookshelves, a long wooden table, and green-shaded reading lamps","all"],
+  ["読書会の円卓（本×紅茶）","a round table at a book club with open books and cups of tea","all"],
+  ["文学講座の小さな教室（本×黒板）","a small lecture room for a literature class, a blackboard and stacks of books on the desk","all"],
+  ["和室の古典講座（座卓×和本）","a tatami room set up for a classics lecture, low tables and old Japanese thread-bound books","all"]]},
+ {event:"all",label:"共通・季節",items:[
+  ["桜の見える会場の窓（春の開講）","a lecture room with large windows framing cherry blossoms in full bloom","spring"],
+  ["新緑のキャンパス","a university campus with fresh green trees and bright early-summer sunlight","summer"],
+  ["夏休みの研修会場（青空×入道雲）","a seminar venue on a summer-break day, a clear blue sky and towering clouds outside the windows","summer"],
+  ["紅葉の並木と会場の入口","the entrance of a lecture venue along a street of trees in autumn colors","autumn"],
+  ["冬の夕暮れに灯る会場","a lecture hall glowing with warm light on a winter evening, a little snow outside","winter"],
+  ["抽象的な背景（グラデーション×光）","a clean abstract background with soft gradients and gentle light, ideal for an announcement poster","all"]]}
+]},
+{key:"style",num:"02",title:"画風",sub:"絵のタッチや仕上がりを1つ以上選びます",groups:[
+ {event:"kouen",items:[["映画ポスター風（劇的な光）","a cinematic movie-poster style with dramatic lighting and depth","all"],["セミリアルな厚塗りイラスト","a semi-realistic painterly digital illustration with rich, soft rendering","all"]]},
+ {event:"kenshu",items:[["明るいフラットイラスト（図解風）","a bright, friendly flat-vector illustration style with simple shapes","all"],["グラフィックレコーディング風（手描き）","a hand-drawn graphic-recording style with marker lines and cheerful colors","all"]]},
+ {event:"online",items:[["モダンなグラデーション×ガラス風","a modern design with smooth gradients and soft frosted-glass panels","all"],["すっきりしたテック系バナー","a clean, contemporary tech-banner style with crisp shapes and plenty of white space","all"]]},
+ {event:"jugyo",items:[["やさしい水彩イラスト（学校×ぬくもり）","a gentle watercolor illustration of school life with warm, soft colors","all"],["黒板アート風（チョークの質感）","a chalkboard-art style with soft chalk textures on a dark green board","all"]]},
+ {event:"talk",items:[["レトロなラジオ・ポスター風","a retro radio-show poster style with muted colors and a print texture","all"],["夜のトークライブ（ネオン×光）","a stylish night talk-live look with soft neon accents and warm stage light","all"]]},
+ {event:"bungaku",items:[["古書の装幀風（布装×箔押し）","a classic book-cover design with cloth texture and foil-stamped ornaments","all"],["大正ロマン挿絵（叙情×モダン）","a Taisho-era romantic illustration style with lyrical lines and retro modern charm","all"]]},
+ {event:"all",label:"共通",items:[
+  ["雑誌の表紙（エディトリアル）","a high-quality magazine cover composition with an editorial layout","all"],
+  ["ミニマル（余白の多いデザイン）","a minimalist design with generous white space and a calm, refined balance","all"],
+  ["和モダン（墨×余白）","a Japanese modern design with sumi ink accents and elegant negative space","all"],
+  ["色鉛筆のやさしいタッチ","a soft colored-pencil illustration with a warm, hand-made feel","all"],
+  ["絵本の一場面（やさしさ×物語）","a gentle storybook illustration style with soft textures and a narrative feel","all"],
+  ["切り絵・ペーパーカット","a layered paper-cut illustration style with soft shadows","all"],
+  ["ファッションイラスト（線画×水彩）","an elegant fashion illustration with fine ink lines and loose watercolor","all"],
+  ["明るいアニメ調イラスト","a bright, clean anime-inspired illustration with clear outlines and an original design","all"],
+  ["幻想的イラスト（夢幻×光）","an ethereal, dreamlike illustration with soft glowing light","all"]]}
+]},
+{key:"subject",num:"03",title:"登壇者の仕草・表情",sub:"告知の主役になる登壇者のポーズや表情を1つ以上選びます",groups:[
+ {event:"kouen",items:[
+  ["演台でマイクを手に語る","a woman speaker standing at a podium, holding a microphone and speaking with passion","all"],
+  ["客席へ手を差しのべる（熱意）","a woman speaker on stage reaching one open hand toward the audience, eyes bright with enthusiasm","all"],
+  ["スクリーンを指して解説する","a woman speaker gesturing toward a large blank projection screen as she explains","all"],
+  ["拍手に応えて一礼する","a woman speaker bowing gracefully on stage in response to applause","all"]]},
+ {event:"kenshu",items:[
+  ["参加者の輪の中で問いかける","a woman facilitator standing among participants, asking a question with a warm smile","all"],
+  ["ホワイトボードにペンで書き込む","a woman facilitator writing on a whiteboard with a marker, turning back toward the participants","all"],
+  ["付箋を手に笑顔でうなずく","a woman holding a sticky note and nodding with a bright smile","all"],
+  ["グループを回って耳を傾ける","a woman leaning in to listen to a small group discussion, attentive and kind","all"]]},
+ {event:"online",items:[
+  ["カメラ目線で手を振る","a woman smiling at the camera and waving hello","all"],
+  ["ノートPCに向かって笑顔で話す","a woman speaking cheerfully to a laptop camera at her desk","all"],
+  ["マイクの前で語りかける","a woman speaking into a desk microphone with a friendly expression","all"],
+  ["指を立てて要点を伝える","a woman raising one finger as she makes a key point, looking at the camera","all"]]},
+ {event:"jugyo",items:[
+  ["黒板の前で生徒に問いかける","a woman teacher in front of a blackboard, asking her students a question with an encouraging smile","all"],
+  ["教科書を片手に読み聞かせる","a woman teacher reading aloud from a textbook held in one hand","all"],
+  ["生徒の机のそばでかがんで話す","a woman teacher crouching beside a student's desk, speaking gently","all"],
+  ["チョークを持って振り返る","a woman teacher holding a piece of chalk, turning back from the blackboard with a smile","all"]]},
+ {event:"talk",items:[
+  ["マイクに向かって楽しそうに話す","a woman talking happily into a studio microphone","all"],
+  ["対談相手と笑い合う","a woman laughing together with a conversation partner on stage","all"],
+  ["ヘッドホンをつけて収録中","a woman wearing headphones during a recording, smiling as she talks","all"],
+  ["椅子に腰かけてリラックス","a woman seated comfortably on a stage chair, relaxed and approachable","all"]]},
+ {event:"bungaku",items:[
+  ["本を開いて朗読する","a woman reading aloud from an open book, calm and expressive","all"],
+  ["本を胸に抱えて微笑む","a woman holding a book against her chest with a gentle smile","all"],
+  ["書棚の前で一冊を手に取る","a woman taking a book from a tall bookshelf","all"],
+  ["万年筆で原稿に向かう","a woman writing on manuscript paper with a fountain pen at a desk","all"]]},
+ {event:"all",label:"共通",items:[
+  ["正面で穏やかに微笑む（親しみ×信頼）","a woman facing forward with a warm, composed smile and confident posture","all"],
+  ["軽く腕を組んで自信のある表情","a woman with her arms lightly crossed and a confident, friendly expression","all"],
+  ["胸に手を当てて語る（誠実）","a woman speaking sincerely with one hand on her chest","all"],
+  ["手を広げて語りかける（講師×親しみ）","an approachable woman with open hands, gesturing naturally as if speaking to an audience","all"],
+  ["窓辺で考えごとをする横顔","a woman in profile by a window, thoughtful and serene","all"]]}
+]},
+{key:"outfit",num:"04",title:"装い",sub:"登壇にふさわしい装いを季節ごとに、1つ以上選びます",groups:[
+ {event:"kouen",items:[
+  ["ネイビーのセットアップ（信頼×きちんと）","a navy tailored jacket and matching trousers, polished and trustworthy","all"],
+  ["白いジャケット×ワンピース（華やかな登壇）","a white tailored jacket over an elegant dress, bright and stage-ready","all"],
+  ["訪問着で登壇（凛と）","an elegant homongi kimono worn for a formal lecture, dignified and graceful","all"]]},
+ {event:"kenshu",items:[
+  ["シャツ×ニットベスト×パンツ（動きやすく）","a crisp shirt with a knit vest and comfortable tailored trousers","all"],
+  ["カーディガン×ワイドパンツ（やわらかく）","a soft cardigan with wide-leg trousers, approachable and easy to move in","all"]]},
+ {event:"online",items:[
+  ["きれい色のブラウス（画面映え）","a blouse in a clear, flattering color that looks bright on screen","all"],
+  ["白シャツ×アクセサリー（顔まわりを明るく）","a crisp white shirt with simple, elegant earrings that brighten the face","all"]]},
+ {event:"jugyo",items:[
+  ["ブラウス×カーディガン（先生らしい上品さ）","a soft blouse with a cardigan draped over the shoulders","all"],
+  ["ジャケット×スカート（研究授業の日）","a neat jacket with a knee-length skirt, ready for an open lesson","all"]]},
+ {event:"talk",items:[
+  ["ニット×ロングスカート（くつろぎ）","a soft knit top with a long flowing skirt","all"],
+  ["デニムシャツ×ジャケット（カジュアル）","a denim shirt under a casual jacket","all"]]},
+ {event:"bungaku",items:[
+  ["着物×羽織（文学講座）","a kimono layered with a haori jacket, literary and graceful","all"],
+  ["ボウタイブラウス×ベスト（書斎×クラシック）","a bow-tie blouse with a fitted knit vest and tailored trousers, like a scholar in a study","all"]]},
+ {event:"all",label:"洋装・春",items:[
+  ["トレンチコート×ストール（春の街）","a light trench coat with a soft pastel stole","spring"],
+  ["ノーカラージャケット×ワンピース（式典）","a collarless tweed jacket over a pastel dress, ceremony-ready and refined","spring"],
+  ["シフォンブラウス×フレアスカート（軽やか）","a sheer chiffon blouse with a flowing midi flare skirt","spring"],
+  ["花柄ワンピース×カーディガン","a floral print dress with a light knit cardigan","spring"],
+  ["パステルのパンツスーツ（爽やか×知的）","a pastel-colored tailored pantsuit","spring"],
+  ["リボンタイのブラウス×プリーツスカート","a blouse with a soft ribbon tie and a pleated midi skirt","spring"]]},
+ {event:"all",label:"洋装・夏",items:[
+  ["麻のジャケット×ワンピース（涼やかな登壇）","a breezy linen jacket over a simple dress, cool and polished","summer"],
+  ["白いシャツワンピース","a crisp white shirt dress","summer"],
+  ["ノースリーブブラウス×ワイドパンツ","a sleeveless blouse with breezy wide-leg trousers","summer"],
+  ["白いレースブラウス×ロングスカート","a white lace blouse with a long, light skirt","summer"],
+  ["サマーニット×テーパードパンツ（きちんと涼しく）","a fine-gauge summer knit with tapered trousers","summer"],
+  ["ボーダー×マリンスタイル（爽快）","a striped Breton top with white trousers in a marine style","summer"]]},
+ {event:"all",label:"洋装・秋",items:[
+  ["ツイードジャケット×プリーツスカート（知的）","a tweed jacket with a pleated midi skirt","autumn"],
+  ["ニット×チェックのストール（ぬくもり）","a cozy knit sweater with a plaid wool stole","autumn"],
+  ["スエードジャケット×ロングスカート","a suede jacket with a long flowing skirt in autumn tones","autumn"],
+  ["ボルドーのワンピース（深い色×品）","an elegant dress in deep burgundy","autumn"],
+  ["ベレー帽×ケープコート（文学少女風）","a beret and a short cape coat, with a literary, retro charm","autumn"],
+  ["タートルネック×テーラードパンツ","a fine turtleneck with tailored trousers in warm neutral tones","autumn"]]},
+ {event:"all",label:"洋装・冬",items:[
+  ["ロングコート×マフラー（冬の街）","a long wool coat with a thick scarf and leather gloves","winter"],
+  ["ファー襟コート×手袋（華やか）","an elegant coat with a soft faux-fur collar and gloves","winter"],
+  ["ケーブルニット×ロングスカート（ぬくもり）","a chunky cable-knit sweater with a long wool skirt","winter"],
+  ["ベルベットのジャケット（冬の登壇）","a velvet tailored jacket in a deep jewel tone","winter"],
+  ["ハイネックニット×ウールのパンツ","a high-neck knit with wool trousers, warm and refined","winter"],
+  ["ツイードのセットアップ（クラシック）","a matching tweed jacket and skirt set, classic and warm","winter"]]},
+ {event:"all",label:"洋装・通年",items:[
+  ["テーラードジャケット×パンツ（講師・登壇）","a tailored blazer and trousers, polished and ready for a lecture","all"],
+  ["シャツ×ロングスカート（きちんと×柔らか）","a crisp shirt with a long flowing skirt","all"],
+  ["きれいめワンピース（品×親しみ）","a simple, elegant dress that looks graceful and approachable","all"],
+  ["眼鏡×ジャケット（知的な印象）","stylish glasses and a smart jacket for an intellectual look","all"]]},
+ {event:"all",label:"和装",items:[
+  ["訪問着（上品×絵羽模様）","an elegant homongi kimono with a continuous painted pattern across the hem","all"],
+  ["小紋×名古屋帯（日常の粋）","a fine-patterned komon kimono with a Nagoya obi, refined and casual","all"],
+  ["袴×ブーツ（大正の女学生）","a Taisho-style kimono with hakama trousers and lace-up boots","spring"],
+  ["浴衣（涼やか×夏柄）","a crisp cotton yukata with summer motifs","summer"],
+  ["羽織×着物（秋色）","a kimono layered with a haori jacket in autumn tones","autumn"],
+  ["道行コート×ショール（冬の和装）","a kimono with a michiyuki coat and a soft shawl for winter","winter"]]}
+]},
+{key:"color",num:"05",title:"配色",sub:"告知画像の印象を決める配色を1つ以上選びます",groups:[
+ {event:"kouen",items:[
+  ["ネイビー×白×ゴールド（信頼×格調）","deep navy, clean white, and soft gold accents","all"],
+  ["ボルドー×アイボリー（重厚×あたたかさ）","rich burgundy, warm ivory, and dark wood brown","all"]]},
+ {event:"kenshu",items:[
+  ["ティール×コーラル×白（明るく前向き）","teal, coral, and crisp white","all"],
+  ["付箋のカラフル（黄×水色×ピンク）","sticky-note yellow, light blue, soft pink, and white","all"]]},
+ {event:"online",items:[
+  ["ブルー×ラベンダーのグラデーション","a smooth gradient of clear blue and soft lavender with white","all"],
+  ["ミント×グレー（すっきり）","fresh mint, cool light gray, and white","all"]]},
+ {event:"jugyo",items:[
+  ["黒板の緑×チョークの白×木の色","blackboard green, chalk white, and warm natural wood","all"],
+  ["空色×レモン（明るい教室）","sky blue, lemon yellow, and white","all"]]},
+ {event:"talk",items:[
+  ["マスタード×チャコール（レトロ）","mustard yellow, charcoal gray, and cream","all"],
+  ["スポットライトの琥珀×深い紺","warm spotlight amber and deep midnight blue","all"]]},
+ {event:"bungaku",items:[
+  ["古書（セピア×生成り）","sepia, unbleached cream, faded ink brown, and muted gold","all"],
+  ["深緑×ゴールド（図書館）","deep library green, antique gold, and warm ivory","all"]]},
+ {event:"all",label:"季節",items:[
+  ["桜（白×薄紅）","cherry blossom white, pale sakura pink, soft blush, and fresh spring green","spring"],
+  ["若葉（黄緑×白）","fresh leaf green, light yellow-green, and white","spring"],
+  ["夏空（青×白）","bright summer-sky blue, cloud white, and a touch of sunflower yellow","summer"],
+  ["紅葉（紅×黄）","maple crimson, burnt orange, ginkgo yellow, and deep brown","autumn"],
+  ["秋の夕暮れ（テラコッタ×ベージュ）","terracotta, warm beige, and soft olive","autumn"],
+  ["雪の日（白×ネイビー×銀）","snow white, deep navy, and silver gray","winter"],
+  ["冬のあかり（深緑×赤×金）","deep evergreen, warm red, and candlelight gold","winter"]]}
+]},
+{key:"motif",num:"06",title:"モチーフ・小物",sub:"画面に添える小物を1つ以上選びます",groups:[
+ {event:"kouen",items:[
+  ["スタンドマイク","a classic stand microphone","all"],
+  ["演台の花のアレンジ","a fresh flower arrangement on the podium","all"],
+  ["水差しとグラス","a glass water pitcher and a glass on the podium","all"]]},
+ {event:"kenshu",items:[
+  ["カラフルな付箋","colorful blank sticky notes","all"],
+  ["マーカーペンとホワイトボード","marker pens beside a whiteboard","all"],
+  ["コーヒーカップとノート","a coffee cup and an open blank notebook","all"]]},
+ {event:"online",items:[
+  ["ノートPCとリングライト","a laptop and a soft ring light","all"],
+  ["ヘッドセット・マイク","a headset microphone","all"],
+  ["観葉植物","a small potted green plant","all"]]},
+ {event:"jugyo",items:[
+  ["チョークと黒板消し","pieces of chalk and a blackboard eraser","all"],
+  ["教科書とノート","a textbook and student notebooks","all"],
+  ["学校の机と椅子","a classic wooden school desk and chair","all"]]},
+ {event:"talk",items:[
+  ["スタジオマイクとヘッドホン","a studio microphone and headphones","all"],
+  ["2脚の椅子とサイドテーブル","two stage chairs with a small side table and mugs","all"],
+  ["オンエアランプ（文字なし）","a glowing red on-air lamp with no lettering","all"]]},
+ {event:"bungaku",items:[
+  ["古書・積み重ねた本","old clothbound books stacked together","all"],
+  ["原稿用紙と万年筆","Japanese manuscript paper and a fountain pen","all"],
+  ["栞と押し花","a bookmark and a pressed flower","all"]]},
+ {event:"all",label:"共通",items:[
+  ["開いた本","an open book","all"],
+  ["一輪挿しの花","a single flower in a small vase","all"],
+  ["吹き出しのアイコン（対話）","simple empty speech-bubble shapes suggesting conversation","all"],
+  ["電球のアイコン（ひらめき）","a simple light-bulb shape suggesting inspiration","all"],
+  ["桜の枝","a branch of cherry blossoms","spring"],
+  ["向日葵","sunflowers","summer"],
+  ["紅葉の葉","scattered autumn maple leaves","autumn"],
+  ["ポインセチア・雪の結晶","poinsettias and snowflakes","winter"]]}
+]}
+];
+const TEXT_STYLES=[
+ ["太めゴシック（力強く）","in bold, clean Gothic sans-serif"],
+ ["モダン明朝（知的×上品）","in refined modern Mincho serif typography"],
+ ["丸ゴシック（親しみ）","in soft, friendly rounded Gothic type"],
+ ["筆文字・手書き調","in expressive Japanese brush calligraphy"],
+ ["やさしい手書き風","in warm, gentle handwritten lettering"],
+ ["チョーク文字（黒板風）","in hand-drawn chalk lettering"],
+ ["雑誌の表紙風（エディトリアル）","in a stylish editorial magazine-cover typeface layout"],
+ ["ゴールド・箔押し","in gold foil-stamped lettering"],
+ ["ポップ・カラフル","in playful, colorful pop lettering"],
+ ["極細・ミニマル","in ultra-thin minimalist lettering"]];
+// 文字の描かせ方：細かい情報は崩れやすいので、タイトルだけ描かせて残りは後入れの余白にもできる
+const TEXT_MODES=[
+ ["すべての文字をAIに描かせる","all","入力した文字をすべて画像の中に描かせます"],
+ ["タイトルだけ描かせ、他は後入れ","later","タイトルとサブタイトルだけ描かせ、登壇者・開催情報は Canva などであとから入れるための空いた場所を作ります"]];
+const BASE_COLORS=[
+ ["ネイビーと白","navy and white","all"],
+ ["チャコールとゴールド","charcoal and gold","all"],
+ ["ティールとコーラル","teal and coral","all"],
+ ["桜色と若草色","cherry blossom pink and young grass green","spring"],
+ ["空色とレモン","sky blue and lemon yellow","summer"],
+ ["藍色と白","deep indigo and white","summer"],
+ ["テラコッタとベージュ","terracotta and beige","autumn"],
+ ["ボルドーとゴールド","burgundy and gold","autumn"],
+ ["雪白とネイビー","snow white and navy","winter"],
+ ["深緑と金","deep green and gold","winter"]];
+const SPECIAL_EFFECTS=[
+ ["舞い散る花びら","drifting cherry petals in the air","spring"],
+ ["木漏れ日","dappled sunlight through leaves","summer"],
+ ["夏空と入道雲","a bright summer sky with towering clouds","summer"],
+ ["舞い落ちる紅葉","falling autumn leaves","autumn"],
+ ["舞う雪","gently falling snow","winter"],
+ ["やわらかなスポットライト","a soft stage spotlight","all"],
+ ["窓からの自然光","soft natural window light","all"],
+ ["やわらかな逆光","gentle, glowing backlight","all"],
+ ["光の粒・ボケ","floating particles of light and soft bokeh","all"],
+ ["なめらかなグラデーション","smooth color gradients","all"],
+ ["紙の質感","a subtle paper texture","all"],
+ ["水彩のにじみ","soft watercolor bleeding","all"],
+ ["金箔の光沢","gold leaf shimmer","all"],
+ ["フィルムグレイン","subtle film grain","all"]];
+const SIZES=[["正方形（1:1 Instagram）","square 1:1 aspect ratio"],["縦長（4:5 Instagram）","vertical 4:5 aspect ratio"],["ストーリーズ（9:16）","vertical 9:16 aspect ratio"],["横長（16:9 スライド・YouTube）","wide 16:9 aspect ratio"],["X・Facebook（1.91:1）","horizontal 1.91:1 banner aspect ratio"],["note見出し（1280×670）","1280x670 horizontal banner, about 1.91:1"],["A4縦（チラシ）","A4 portrait flyer format"],["A4横","A4 landscape flyer format"]];
+
+const ARRANGES=[
+ ["スタイリッシュ","stylish and sophisticated, with a sharp, polished overall look"],
+ ["ファッショナブル","fashionable, with a fashion-forward styling sensibility"],
+ ["幻想的","ethereal and dreamlike, softly wrapped in luminous atmosphere"],
+ ["デフォルメ強め","with stronger stylization and illustrative simplification, while keeping the likeness recognizable"],
+ ["若々しく・見映えよく","looking youthful, fresh, and at their most flattering"],
+ ["背景と調和するイラスト化","fully integrated into the background as one cohesive illustration, with matching lighting and brushwork"],
+ ["女優風","with a poised, elegant, actress-like bearing and graceful presence"],
+ ["鼻筋の通った","with a gently defined, straight nose bridge that still stays true to their own nose"],
+ ["透明感のある肌","with clear, luminous, translucent skin"]];
+const HARMONY=ARRANGES[5][1];
+// アレンジの強さ：似せ方の指示を切り替える（似せる指示が強すぎるとアレンジが効かないため）
+const STRENGTHS=[
+ ["控えめ（本人そっくり）","Keep their recognizable features: the same face shape, the same eye shape, size and spacing, the same nose, the same mouth and smile, and their hairstyle and hair length, without idealizing them into a generic beauty."],
+ ["ほどよく","Keep a recognizable likeness of their face shape, eye shape, smile, and hairstyle, the way a skilled illustrator captures someone in a portrait, but do not reproduce the photo's face exactly: redraw every feature with the proportions, line work, and stylization of this illustration."],
+ ["大胆に（イラストの人物として）","Keep only a loose likeness: the overall impression of their face, their smile, and their hairstyle. Freely redesign the face as an illustrated character in this artwork's style; it does not need to look photographically identical to the reference."]];
+const DEFAULT_STRENGTH=STRENGTHS[1][1];
+let strengthPick=DEFAULT_STRENGTH;
+const arranges=new Set();
+let season="all",ev="all";
+const selected={}; CATEGORIES.forEach(c=>selected[c.key]=new Set());
+const FRAMINGS=[
+ ["バストアップ（胸から上）","Composition: a bust-up shot from the chest up."],
+ ["上半身（腰から上）","Composition: a waist-up shot showing the upper body."],
+ ["膝上（7分丈）","Composition: a three-quarter shot from the knees up."],
+ ["全身（会場ごと引きで）","Composition: a wide shot showing the whole figure together with the venue around them."],
+ ["顔のアップ（頭まで入れる）","Composition: a close-up portrait of the face and shoulders, still including the whole head."],
+ ["人物なしの会場・背景","Composition: a scene or background with no people in it."]];
+const SIDES=[
+ ["中央","center"],
+ ["左に寄せる（右に文字）","left"],
+ ["右に寄せる（左に文字）","right"]];
+const TEXT_POS=[
+ ["上部に横書き","across the top of the image above the head"],
+ ["下部に横書き","across the bottom of the image"],
+ ["人物の横に大きく","large, in the open space beside the person"],
+ ["左側に縦書き","vertically along the left side in tategaki vertical writing"],
+ ["右側に縦書き","vertically along the right side in tategaki vertical writing"]];
+const INFO_POS=[
+ ["下部の帯","in a clean horizontal band across the bottom of the image"],
+ ["上部の帯","in a clean horizontal band across the top of the image"],
+ ["右側の縦長パネル","in a clean vertical panel along the right side of the image"],
+ ["左側の縦長パネル","in a clean vertical panel along the left side of the image"],
+ ["右下にまとめて","in a neat block in the lower-right area of the image"],
+ ["左下にまとめて","in a neat block in the lower-left area of the image"]];
+const DEFAULT_FRAMING=FRAMINGS[1][1];
+const NO_PEOPLE=FRAMINGS[5][1];
+// 指定外の文字は崩れやすいので、スクリーン・ホワイトボード・本などは白紙か抽象的な形にとどめる
+const BLANK_SURFACES="Any projection screens, slides, whiteboards, blackboards, laptop screens, banners, signs, name tags, sticky notes, books, or papers in the scene must be blank or show only simple abstract shapes, with no readable or fake text.";
+const NO_EXTRA_TEXT="Do not write any other text anywhere in the image besides the specified text. "+BLANK_SURFACES;
+const FLYER="Design the whole image as a polished, professional event announcement visual with a clear visual hierarchy, a balanced layout, and enough clean space around the text so that it is easy to read at a glance.";
+let framingPick=DEFAULT_FRAMING,sidePick="center",headroomOn=true,textPosPick=null,infoPosPick=null,flyerOn=true,qrOn=false,linePick=null,textMode="all";
+let textStyle=null,baseColorPick=null,sizePick=null; const effects=new Set();
+let portraitOn=false;
+const TEXT_IDS=["titleText","subText","speakerName","speakerRole","dateText","venueText","hostText","feeText","applyText"];
+const $=id=>document.getElementById(id);
+const val=id=>$(id).value.trim();
+const fitsSeason=s=>season==="all"||s==="all"||s===season;
+const fitsEvent=e=>ev==="all"||e==="all"||e===ev;
+const groupLabel=g=>g.label||EVENT_BY[g.event].title;
+const pick=arr=>arr[Math.floor(Math.random()*arr.length)];
+
+function mkOpt(item,on,onClick){
+  const b=document.createElement("button");b.type="button";b.className="opt";b.setAttribute("aria-pressed",on);
+  b.innerHTML='<span class="jp"></span><span class="en"></span>';
+  b.querySelector(".jp").textContent=item[0];b.querySelector(".en").textContent=item[1];
+  b.onclick=onClick;return b;
+}
+function mkChip(label,on,onClick){const b=document.createElement("button");b.type="button";b.className="chip";b.textContent=label;b.setAttribute("aria-pressed",on);b.onclick=onClick;return b;}
+
+function setEvent(k){
+  ev=k;
+  // 他の催しの項目は選択から外す（共通項目は残す）
+  if(k!=="all")CATEGORIES.forEach(c=>c.groups.forEach(g=>{if(g.event!=="all"&&g.event!==k)g.items.forEach(i=>selected[c.key].delete(i[1]));}));
+  if(linePick&&k!=="all"&&linePick.event!==k)linePick=null;
+}
+function renderEvents(){
+  const bar=$("eventBar");bar.innerHTML="";
+  bar.appendChild(mkOpt(["すべての催し","種類を限定しない"],ev==="all",()=>{setEvent("all");renderAll();}));
+  EVENTS.forEach(e=>bar.appendChild(mkOpt([e.title,e.meta],ev===e.key,()=>{setEvent(ev===e.key?"all":e.key);renderAll();})));
+  const box=$("worldBox");box.innerHTML="";
+  if(ev!=="all"){
+    const d=document.createElement("div");d.className="world";
+    d.innerHTML='<strong>プロンプトに入る会場・空気感</strong><span class="en"></span>';
+    d.querySelector(".en").textContent=EVENT_BY[ev].world;box.appendChild(d);
+  }
+  $("flyerSwitch").setAttribute("aria-checked",flyerOn);
+}
+function renderSeason(){
+  const bar=$("seasonBar");bar.innerHTML="";
+  SEASONS.forEach(([k,l])=>bar.appendChild(mkChip(l,season===k,()=>{season=k;
+    if(k==="all")document.documentElement.removeAttribute("data-season");else document.documentElement.setAttribute("data-season",k);
+    renderAll();})));
+}
+function renderCats(){
+  const host=$("catHost");host.innerHTML="";
+  CATEGORIES.forEach(c=>{
+    const sec=document.createElement("section");sec.className="card";
+    sec.innerHTML='<div class="card-head"><div><h2><span class="num">'+c.num+'</span>'+c.title+'</h2><p class="sub">'+c.sub+'</p></div></div>';
+    const rb=document.createElement("button");rb.type="button";rb.className="btn-ghost";rb.textContent="この項目だけランダム";
+    rb.onclick=()=>{randomCat(c);renderAll();};sec.querySelector(".card-head").appendChild(rb);
+    let shown=0;
+    c.groups.forEach(g=>{
+      if(!fitsEvent(g.event))return;
+      const items=g.items.filter(i=>fitsSeason(i[2]));if(!items.length)return;
+      const gl=document.createElement("div");gl.className="group-label";gl.textContent=groupLabel(g);sec.appendChild(gl);
+      const grid=document.createElement("div");grid.className="grid";
+      items.forEach(i=>{shown++;grid.appendChild(mkOpt(i,selected[c.key].has(i[1]),()=>{
+        selected[c.key].has(i[1])?selected[c.key].delete(i[1]):selected[c.key].add(i[1]);renderAll();}));});
+      sec.appendChild(grid);
+    });
+    if(!shown){const p=document.createElement("p");p.className="empty";p.textContent="この催し・季節の組み合わせの項目はありません";sec.appendChild(p);}
+    host.appendChild(sec);
+  });
+}
+function renderExtras(){
+  const tm=$("textModeGrid");tm.innerHTML="";
+  TEXT_MODES.forEach(m=>tm.appendChild(mkChip(m[0],textMode===m[1],()=>{textMode=m[1];renderAll();})));
+  $("textModeHint").textContent=TEXT_MODES.find(m=>m[1]===textMode)[2];
+  const lg=$("lineGrid");lg.innerHTML="";
+  EVENTS.filter(e=>fitsEvent(e.key)).forEach(e=>e.lines.forEach(l=>{
+    const on=!!linePick&&linePick.text===l;
+    const b=mkChip("",on,()=>{
+      if(on){linePick=null;$("titleText").value="";}
+      else{linePick={text:l,event:e.key};$("titleText").value=l;}
+      renderAll();});
+    b.classList.add("line-chip");b.innerHTML="<small></small>";b.querySelector("small").textContent=e.title;b.appendChild(document.createTextNode(l));
+    lg.appendChild(b);
+  }));
+  const ts=$("textStyleGrid");ts.innerHTML="";
+  TEXT_STYLES.forEach(t=>ts.appendChild(mkChip(t[0],textStyle===t[1],()=>{textStyle=textStyle===t[1]?null:t[1];renderAll();})));
+  const tp=$("textPosGrid");tp.innerHTML="";
+  TEXT_POS.forEach(t=>tp.appendChild(mkChip(t[0],textPosPick===t[1],()=>{textPosPick=textPosPick===t[1]?null:t[1];renderAll();})));
+  const ip=$("infoPosGrid");ip.innerHTML="";
+  INFO_POS.forEach(t=>ip.appendChild(mkChip(t[0],infoPosPick===t[1],()=>{infoPosPick=infoPosPick===t[1]?null:t[1];renderAll();})));
+  $("qrSwitch").setAttribute("aria-checked",qrOn);
+  const bc=$("baseColorGrid");bc.innerHTML="";
+  BASE_COLORS.filter(b=>fitsSeason(b[2])).forEach(b=>bc.appendChild(mkChip(b[0],baseColorPick===b[1],()=>{baseColorPick=baseColorPick===b[1]?null:b[1];renderAll();})));
+  const ef=$("effectsGrid");ef.innerHTML="";
+  SPECIAL_EFFECTS.filter(e=>fitsSeason(e[2])).forEach(e=>ef.appendChild(mkChip(e[0],effects.has(e[1]),()=>{effects.has(e[1])?effects.delete(e[1]):effects.add(e[1]);renderAll();})));
+  const sg=$("strengthGrid");sg.innerHTML="";
+  STRENGTHS.forEach(s=>sg.appendChild(mkChip(s[0],strengthPick===s[1],()=>{strengthPick=s[1];renderAll();})));
+  const ag=$("arrangeGrid");ag.innerHTML="";
+  ARRANGES.forEach(a=>{const b=mkOpt(a,arranges.has(a[1]),()=>{arranges.has(a[1])?arranges.delete(a[1]):arranges.add(a[1]);renderAll();});b.querySelector(".en").remove();ag.appendChild(b);});
+  const fr=$("framingGrid");fr.innerHTML="";
+  FRAMINGS.forEach(f=>fr.appendChild(mkChip(f[0],framingPick===f[1],()=>{framingPick=framingPick===f[1]?null:f[1];renderAll();})));
+  const sd=$("sideGrid");sd.innerHTML="";
+  SIDES.forEach(s=>sd.appendChild(mkChip(s[0],sidePick===s[1],()=>{sidePick=s[1];renderAll();})));
+  $("headroomSwitch").setAttribute("aria-checked",headroomOn);
+  const sz=$("sizeGrid");sz.innerHTML="";
+  SIZES.forEach(s=>sz.appendChild(mkChip(s[0],sizePick===s[1],()=>{sizePick=s[1]===sizePick?null:s[1];renderAll();})));
+}
+function pool(c,own){
+  return c.groups.filter(g=>own?(g.event!=="all"&&fitsEvent(g.event)):fitsEvent(g.event)).flatMap(g=>g.items).filter(i=>fitsSeason(i[2]));
+}
+function randomCat(c){
+  // 催しを選んでいるときは、その催しならではの項目を優先する
+  const own=ev!=="all"?pool(c,true):[];
+  const p=own.length&&Math.random()<0.75?own:pool(c,false);
+  selected[c.key].clear();if(p.length)selected[c.key].add(pick(p)[1]);
+}
+function list(arr){return arr.length<2?arr.join(""):arr.slice(0,-1).join(", ")+", and "+arr[arr.length-1];}
+const q=s=>'"'+s+'"';
+
+function update(){
+  const parts=[];
+  const order=["subject","outfit","style","scene","motif","color"];
+  order.forEach(k=>{if(selected[k].size)parts.push([...selected[k]].join(", "));});
+  // 先頭に置く指示（構図・文字）：画像生成AIは前のほうの指示ほど強く反映するため
+  const head=[];
+  const noPeople=framingPick===NO_PEOPLE;
+  const side=noPeople?"center":sidePick;
+  if(framingPick)head.push(framingPick);
+  if(side!=="center")head.push("Place the person on the "+side+" side of the image, leaving the "+(side==="left"?"right":"left")+" side open for text.");
+  // アレンジは末尾だと効かず写真の顔のままになりやすいので、先頭近くに置く
+  const looks=[...arranges].filter(a=>a!==HARMONY);
+  if(portraitOn&&(looks.length||strengthPick!==STRENGTHS[0][1]))head.push("Important: do not reproduce the face in the reference photo as it is. Clearly redraw the person as an illustrated character"+(looks.length?", rendered "+list(looks):"")+", so that the arrangement is obvious at a glance while they remain recognizable.");
+  if(portraitOn&&arranges.has(HARMONY))head.push("Most important: the person's face, skin, and hair must be painted in exactly the same illustration style, brushwork, texture, and color grading as the background, so the whole image looks like one single painting. The face must not look photographic or pasted in. Light the face with the same light sources as the scene (for example stage spotlights, window light, or warm lamplight, with soft shadows on one side), and give the skin the same color cast as the surroundings.");
+  if(headroomOn&&!noPeople)head.push("Keep the entire head and all of the hair fully inside the frame with clear empty space above the head; never crop the top of the head. Place the face slightly above the center of the image"+(side==="center"?", horizontally centered.":", within the "+side+" third of the image."));
+  // 告知の文字：タイトル → 登壇者 → 開催情報（1か所にまとめる）
+  let title=val("titleText"),sub=val("subText");
+  if(!title&&sub){title=sub;sub="";}
+  const name=val("speakerName"),role=val("speakerRole");
+  const details=["dateText","venueText","hostText","feeText","applyText"].map(val).filter(Boolean);
+  const drawAll=textMode==="all";
+  const hasSpeaker=drawAll&&(name||role),hasDetails=drawAll&&details.length;
+  const hasText=!!title||hasSpeaker||hasDetails;
+  const infoPos=infoPosPick||INFO_POS[0][1];
+  if(hasText){
+    let t="The image MUST include clearly legible Japanese text, rendered exactly as written, character by character, with no missing, extra, or altered characters"+(textStyle?", "+textStyle:"")+".";
+    if(title){
+      const pos=textPosPick||(noPeople?"in an open area of the composition":side!=="center"?"in the open "+(side==="left"?"right":"left")+" side of the image, not overlapping the person":"in an open area that does not overlap the face");
+      t+=" The main title, the largest and most prominent text: "+q(title)+", placed "+pos+".";
+      if(sub)t+=" Directly with the title, a smaller subtitle: "+q(sub)+".";
+    }
+    if(hasSpeaker){
+      t+=" The speaker's name"+(name?" in medium size: "+q(name):"")+(role?(name?", with their title in smaller text: ":": ")+q(role):"")+", placed "+(noPeople?"near the title":"near the person")+".";
+    }
+    if(hasDetails)t+=" The event details, grouped together in one neat, well-aligned information block "+infoPos+", each item on its own line in clean, highly readable type: "+details.map(q).join(" / ")+".";
+    head.push(t);
+  }
+  if(!drawAll)head.push("Leave a clean, empty space "+infoPos+" (a plain solid-color or softly blurred area with no text, no patterns, and no objects), where the speaker's name and event details will be added later in an editing app.");
+  if(qrOn)head.push("Leave a small plain white square "+(drawAll&&!hasDetails?"in a lower corner of the image":"inside or right next to the information area")+", where a QR code will be added later; do not draw any QR code, barcode, or fake code.");
+  if(hasText)head.push(NO_EXTRA_TEXT);
+  if(ev!=="all")head.push(EVENT_BY[ev].world);
+  if(flyerOn)head.push(FLYER);
+  let out=head.join(" ");
+  if(parts.length){const body=parts.join(", ");out+=(out?" ":"")+body.charAt(0).toUpperCase()+body.slice(1)+".";}
+  const extra=[];
+  // 文字を指定していなくても、スクリーンや本に崩れた文字を書き込まれやすいため
+  if(!hasText&&(parts.length||!drawAll))extra.push("Do not write any readable text in the image. "+BLANK_SURFACES);
+  if(season!=="all")extra.push("The whole image should evoke the atmosphere of "+SEASON_EN[season]+", with a clear seasonal feeling.");
+  const bcs=[baseColorPick,val("baseColor")].filter(Boolean);
+  if(bcs.length)extra.push("Use "+bcs.join(" / ")+" as the dominant base colors.");
+  const efs=[...effects];const ce=val("specialEffects");if(ce)efs.push(ce);
+  if(efs.length)extra.push("Finish with special effects: "+efs.join(", ")+".");
+  if(portraitOn){
+    let p="Using the attached reference portrait only as a likeness reference, redraw the person from scratch as a fully illustrated speaker who naturally belongs in this scene. Do not copy or paste the photo itself: do not keep its photographic skin texture, its lighting, or its color tone. "+strengthPick+" Reinterpret the pose, camera angle, clothing, and styling to match the mood of this announcement.";
+    const f=val("portraitFeatures");if(f)p+=" Be sure to keep these distinctive features: "+f+".";
+    extra.push(p);
+  }
+  const sizes=[sizePick,val("customSize")].filter(Boolean);
+  if(sizes.length)extra.push("Output size: "+sizes.join(", ")+".");
+  if(extra.length)out+=(out?" ":"")+extra.join(" ");
+  $("promptOutput").value=out;$("charCount").textContent=out.length+" chars";
+}
+function renderAll(){renderEvents();renderSeason();renderCats();renderExtras();update();}
+
+function setSwitch(btn,body,on){btn.setAttribute("aria-checked",on);body.hidden=!on;}
+$("portraitSwitch").onclick=()=>{portraitOn=!portraitOn;setSwitch($("portraitSwitch"),$("portraitBody"),portraitOn);update();};
+["portraitFeatures","baseColor","specialEffects","customSize"].concat(TEXT_IDS.slice(1)).forEach(id=>$(id).addEventListener("input",update));
+$("titleText").addEventListener("input",()=>{if(linePick){linePick=null;renderExtras();}update();});
+$("headroomSwitch").onclick=()=>{headroomOn=!headroomOn;renderAll();};
+$("flyerSwitch").onclick=()=>{flyerOn=!flyerOn;renderAll();};
+$("qrSwitch").onclick=()=>{qrOn=!qrOn;renderAll();};
+$("randomAll").onclick=()=>{
+  // 催しが未選択なら、1つ選んで会場の雰囲気をそろえる
+  if(ev==="all")setEvent(pick(EVENTS).key);
+  // 季節が「すべて」のときは、最初に季節のある項目が選ばれた時点で、残りの引き出しもその季節にそろえる
+  const keep=season;
+  CATEGORIES.forEach(c=>{randomCat(c);
+    const v=[...selected[c.key]][0],hit=c.groups.flatMap(g=>g.items).find(i=>i[1]===v);
+    if(season==="all"&&hit&&hit[2]!=="all")season=hit[2];});
+  season=keep;renderAll();
+};
+$("resetBtn").onclick=()=>{
+  CATEGORIES.forEach(c=>selected[c.key].clear());effects.clear();arranges.clear();textStyle=baseColorPick=sizePick=textPosPick=infoPosPick=linePick=null;framingPick=DEFAULT_FRAMING;sidePick="center";strengthPick=DEFAULT_STRENGTH;textMode="all";headroomOn=flyerOn=true;qrOn=false;ev="all";
+  ["portraitFeatures","baseColor","specialEffects","customSize"].concat(TEXT_IDS).forEach(id=>$(id).value="");
+  portraitOn=false;setSwitch($("portraitSwitch"),$("portraitBody"),false);
+  renderAll();
+};
+$("copyBtn").onclick=()=>{
+  const v=$("promptOutput").value;if(!v)return;const b=$("copyBtn");
+  const done=()=>{b.textContent="コピーしました";setTimeout(()=>b.textContent="コピー",1500);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).then(done).catch(()=>{$("promptOutput").select();document.execCommand("copy");done();});}
+  else{$("promptOutput").select();document.execCommand("copy");done();}
+};
+renderAll();
+})();
+</script>
+</body>
+</html>
